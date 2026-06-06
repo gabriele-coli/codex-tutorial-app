@@ -2,7 +2,7 @@
 
 A beginner-friendly starter project for a local AI notes app.
 
-This version includes a small FastAPI backend with beginner-friendly API endpoints. Notes are stored in a local SQLite database file. Questions are answered by a local Ollama model. There is no frontend yet.
+This version includes a small FastAPI backend and a Streamlit frontend. Notes are stored in a local SQLite database file. Questions are answered by a local Ollama model.
 
 ## Project Structure
 
@@ -10,6 +10,8 @@ This version includes a small FastAPI backend with beginner-friendly API endpoin
 .
 ├── backend/
 │   └── main.py
+├── frontend/
+│   └── app.py
 ├── requirements.txt
 ├── notes.db        # Created automatically when you run the backend
 └── README.md
@@ -36,9 +38,15 @@ Install Ollama from [https://ollama.com](https://ollama.com), then pull the defa
 ollama pull llama3.2
 ```
 
-## Run the Backend
+## Run the App
 
-Start the FastAPI development server:
+The app has two local servers:
+
+- FastAPI backend: stores notes and talks to Ollama
+- Streamlit frontend: shows the browser interface
+
+Start the FastAPI backend in one terminal:
+
 
 ```bash
 uvicorn backend.main:app --reload
@@ -49,6 +57,16 @@ Make sure Ollama is also running locally. By default, the backend calls:
 ```text
 http://localhost:11434/api/generate
 ```
+
+Start the Streamlit frontend in a second terminal:
+
+```bash
+streamlit run frontend/app.py
+```
+
+Open the Streamlit app in your browser:
+
+[http://localhost:8501](http://localhost:8501)
 
 Open the health check in your browser:
 
@@ -134,6 +152,7 @@ Example response:
 ## What This Version Teaches
 
 - FastAPI creates the web API.
+- Streamlit creates the browser interface.
 - Pydantic models describe the JSON inputs and outputs.
 - SQLite stores notes locally on your laptop.
 - `POST /notes` accepts a note and saves it in `notes.db`.
@@ -141,9 +160,9 @@ Example response:
 - Ollama runs a local LLM on your laptop.
 - `POST /ask` sends the question and saved notes to Ollama.
 - Logging prints important backend events in the server terminal.
-- Basic error handling returns cleaner messages if SQLite has a problem.
+- Basic error handling returns cleaner messages if SQLite or Ollama has a problem.
 
-The next step is to add a simple Streamlit frontend.
+The next step is to retrieve only the most relevant notes for each question.
 
 ## Local Database
 
@@ -181,4 +200,19 @@ You can override them with environment variables before starting the backend:
 ```bash
 export OLLAMA_MODEL=mistral
 uvicorn backend.main:app --reload
+```
+
+## Frontend Settings
+
+The Streamlit frontend calls this backend by default:
+
+```text
+API_BASE_URL=http://127.0.0.1:8000
+```
+
+You can override it before starting Streamlit:
+
+```bash
+export API_BASE_URL=http://127.0.0.1:8000
+streamlit run frontend/app.py
 ```
