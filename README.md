@@ -2,7 +2,7 @@
 
 A beginner-friendly starter project for a local AI notes app.
 
-This version includes a small FastAPI backend with beginner-friendly API endpoints. Notes are stored in a local SQLite database file. There is no frontend or LLM integration yet.
+This version includes a small FastAPI backend with beginner-friendly API endpoints. Notes are stored in a local SQLite database file. Questions are answered by a local Ollama model. There is no frontend yet.
 
 ## Project Structure
 
@@ -30,12 +30,24 @@ Install the backend dependencies:
 pip install -r requirements.txt
 ```
 
+Install Ollama from [https://ollama.com](https://ollama.com), then pull the default model:
+
+```bash
+ollama pull llama3.2
+```
+
 ## Run the Backend
 
 Start the FastAPI development server:
 
 ```bash
 uvicorn backend.main:app --reload
+```
+
+Make sure Ollama is also running locally. By default, the backend calls:
+
+```text
+http://localhost:11434/api/generate
 ```
 
 Open the health check in your browser:
@@ -102,7 +114,7 @@ Example response:
 
 ### Ask a Question
 
-Ask a question. For now, this returns a placeholder answer:
+Ask a question. The backend sends your question and saved notes to Ollama:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/ask \
@@ -114,7 +126,7 @@ Example response:
 
 ```json
 {
-  "answer": "You asked: 'What should I remember?'. This is a placeholder answer. Later, this endpoint will use your saved notes and a local Ollama model to answer the question.",
+  "answer": "Based on your saved notes, you should remember to test the notes API.",
   "notes_used": 1
 }
 ```
@@ -126,11 +138,12 @@ Example response:
 - SQLite stores notes locally on your laptop.
 - `POST /notes` accepts a note and saves it in `notes.db`.
 - `GET /notes` returns all saved notes from `notes.db`.
-- `POST /ask` accepts a question and returns a fake answer for now.
+- Ollama runs a local LLM on your laptop.
+- `POST /ask` sends the question and saved notes to Ollama.
 - Logging prints important backend events in the server terminal.
 - Basic error handling returns cleaner messages if SQLite has a problem.
 
-The next step is to connect `POST /ask` to a local Ollama model.
+The next step is to add a simple Streamlit frontend.
 
 ## Local Database
 
@@ -152,4 +165,20 @@ When the backend is running, it prints useful messages in the terminal. For exam
 
 These logs help you understand what the backend is doing.
 
-If SQLite has a problem, the backend logs the detailed error in the terminal and returns a simple error message to the API caller.
+If SQLite or Ollama has a problem, the backend logs the detailed error in the terminal and returns a simple error message to the API caller.
+
+## Ollama Settings
+
+The backend uses these default Ollama settings:
+
+```text
+OLLAMA_URL=http://localhost:11434/api/generate
+OLLAMA_MODEL=llama3.2
+```
+
+You can override them with environment variables before starting the backend:
+
+```bash
+export OLLAMA_MODEL=mistral
+uvicorn backend.main:app --reload
+```

@@ -1,5 +1,9 @@
+import json
 import logging
+import os
 import sqlite3
+import urllib.error
+import urllib.request
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 
@@ -7,6 +11,9 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 DATABASE_PATH = Path("notes.db")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+OLLAMA_TIMEOUT_SECONDS = 60
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,6 +75,84 @@ def get_all_notes():
     return [dict(row) for row in rows]
 
 
+def build_prompt(question: str, notes: list[dict]):
+    if notes:
+        notes_text = "\n".join(
+            f"- Note {note['id']}: {note['text']}" for note in notes
+        )
+    else:
+        notes_text = "No notes have been saved yet."
+
+    return f"""
+You are a helpful assistant for a local notes app.
+
+Answer the user's question using only the notes below.
+If the notes do not contain enough information, say that you do not know based on the saved notes.
+
+Saved notes:
+{notes_text}
+
+User question:
+{question}
+""".strip()
+
+
+def ask_ollama(question: str, notes: list[dict]):
+    prompt = build_prompt(question, notes)
+    logger.info("Sending question to Ollama model %s", OLLAMA_MODEL)
+
+    request_body = json.dumps(
+        {
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False,
+        }
+    ).encode("utf-8")
+    request = urllib.request.Request(
+        OLLAMA_URL,
+        data=request_body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(
+            request,
+            timeout=OLLAMA_TIMEOUT_SECONDS,
+        ) as response:
+            response_text = response.read().decode("utf-8")
+    except (urllib.error.URLError, TimeoutError) as error:
+        logger.exception("Failed to get an answer from Ollama")
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Could not get an answer from Ollama. "
+                "Make sure Ollama is running and the model is available."
+            ),
+        ) from error
+
+    try:
+        data = json.loads(response_text)
+    except json.JSONDecodeError as error:
+        logger.exception("Ollama returned invalid JSON")
+        raise HTTPException(
+            status_code=502,
+            detail="Ollama returned an unexpected response.",
+        ) from error
+
+    answer = data.get("response")
+
+    if not answer:
+        logger.error("Ollama response did not include an answer")
+        raise HTTPException(
+            status_code=502,
+            detail="Ollama returned an unexpected response.",
+        )
+
+    logger.info("Received answer from Ollama")
+    return answer.strip()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting Local AI Notes API")
@@ -94,7 +179,7 @@ class Note(BaseModel):
 
 
 class AskRequest(BaseModel):
-    question: str
+    question: str = Field(min_length=1)
 
 
 class AskResponse(BaseModel):
@@ -137,7 +222,7 @@ def list_notes():
 
 @app.post("/ask", response_model=AskResponse)
 def ask_question(request: AskRequest):
-    logger.info("Received question for placeholder answer")
+    logger.info("Received question for Ollama")
 
     try:
         notes = get_all_notes()
@@ -148,11 +233,9 @@ def ask_question(request: AskRequest):
             detail="Could not load notes for the question. Please try again.",
         )
 
+    answer = ask_ollama(request.question, notes)
+
     return {
-        "answer": (
-            f"You asked: '{request.question}'. This is a placeholder answer. "
-            "Later, this endpoint will use "
-            "your saved notes and a local Ollama model to answer the question."
-        ),
+        "answer": answer,
         "notes_used": len(notes),
     }
