@@ -127,6 +127,8 @@ Example response:
 - `POST /notes` accepts a note and saves it in `notes.db`.
 - `GET /notes` returns all saved notes from `notes.db`.
 - `POST /ask` accepts a question and returns a fake answer for now.
+- Logging prints important backend events in the server terminal.
+- Basic error handling returns cleaner messages if SQLite has a problem.
 
 The next step is to connect `POST /ask` to a local Ollama model.
 
@@ -137,3 +139,17 @@ The backend automatically creates a local SQLite database file called `notes.db`
 That file is ignored by Git, so your personal notes do not get committed to the repository.
 
 To reset your local notes, stop the server and delete `notes.db`. The backend will create a fresh empty database the next time it starts.
+
+## Logging and Errors
+
+When the backend is running, it prints useful messages in the terminal. For example, you may see messages when:
+
+- the app starts
+- the notes table is prepared
+- a note is saved
+- notes are loaded
+- a question is received
+
+These logs help you understand what the backend is doing.
+
+If SQLite has a problem, the backend logs the detailed error in the terminal and returns a simple error message to the API caller.
