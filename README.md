@@ -2,7 +2,7 @@
 
 A beginner-friendly starter project for a local AI notes app.
 
-This version includes a small FastAPI backend with beginner-friendly API endpoints. Notes are stored in memory for now, so they reset when the server restarts. There is no database, frontend, or LLM integration yet.
+This version includes a small FastAPI backend with beginner-friendly API endpoints. Notes are stored in a local SQLite database file. There is no frontend or LLM integration yet.
 
 ## Project Structure
 
@@ -11,6 +11,7 @@ This version includes a small FastAPI backend with beginner-friendly API endpoin
 ├── backend/
 │   └── main.py
 ├── requirements.txt
+├── notes.db        # Created automatically when you run the backend
 └── README.md
 ```
 
@@ -71,7 +72,7 @@ Example response:
 
 ### Add a Note
 
-Save a note in memory:
+Save a note in SQLite:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/notes \
@@ -87,7 +88,7 @@ Example response:
 
 ### List Notes
 
-Get all notes currently stored in memory:
+Get all notes currently stored in SQLite:
 
 ```bash
 curl http://127.0.0.1:8000/notes
@@ -122,8 +123,17 @@ Example response:
 
 - FastAPI creates the web API.
 - Pydantic models describe the JSON inputs and outputs.
-- `POST /notes` accepts a note and stores it temporarily.
-- `GET /notes` returns all saved notes.
+- SQLite stores notes locally on your laptop.
+- `POST /notes` accepts a note and saves it in `notes.db`.
+- `GET /notes` returns all saved notes from `notes.db`.
 - `POST /ask` accepts a question and returns a fake answer for now.
 
-The next step is to replace the temporary in-memory notes list with SQLite.
+The next step is to connect `POST /ask` to a local Ollama model.
+
+## Local Database
+
+The backend automatically creates a local SQLite database file called `notes.db` the first time it starts.
+
+That file is ignored by Git, so your personal notes do not get committed to the repository.
+
+To reset your local notes, stop the server and delete `notes.db`. The backend will create a fresh empty database the next time it starts.
